@@ -1,7 +1,6 @@
 package github
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -361,6 +360,9 @@ func listIssueDependencies(ctx context.Context, client *github.Client, owner, re
 
 	var deps IssueDependenciesResponse
 	resp, err := client.Do(ctx, req, &deps)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err != nil {
 		return ghErrors.NewGitHubAPIErrorResponse(ctx,
 			fmt.Sprintf("failed to list %s dependencies", dependencyType),
@@ -368,7 +370,6 @@ func listIssueDependencies(ctx context.Context, client *github.Client, owner, re
 			err,
 		), nil
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(resp.Body)
@@ -396,18 +397,16 @@ func addIssueDependency(ctx context.Context, client *github.Client, owner, repo 
 		IssueNumber: blockedByIssueNumber,
 	}
 
-	bodyBytes, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	req, err := client.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	req, err := client.NewRequest("POST", url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	var result map[string]any
 	resp, err := client.Do(ctx, req, &result)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err != nil {
 		return ghErrors.NewGitHubAPIErrorResponse(ctx,
 			"failed to add blocked_by dependency",
@@ -415,7 +414,6 @@ func addIssueDependency(ctx context.Context, client *github.Client, owner, repo 
 			err,
 		), nil
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	// Accept both 200 OK (when dependency relationship was already established) and 201 Created (when newly created)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
@@ -444,18 +442,16 @@ func removeIssueDependency(ctx context.Context, client *github.Client, owner, re
 		IssueNumber: blockedByIssueNumber,
 	}
 
-	bodyBytes, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	req, err := client.NewRequest("DELETE", url, bytes.NewReader(bodyBytes))
+	req, err := client.NewRequest("DELETE", url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	var result map[string]any
 	resp, err := client.Do(ctx, req, &result)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err != nil {
 		return ghErrors.NewGitHubAPIErrorResponse(ctx,
 			"failed to remove blocked_by dependency",
@@ -463,7 +459,6 @@ func removeIssueDependency(ctx context.Context, client *github.Client, owner, re
 			err,
 		), nil
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	// Accept both 200 OK (with response content) and 204 No Content (standard DELETE success)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
