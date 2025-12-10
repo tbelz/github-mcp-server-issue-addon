@@ -462,6 +462,7 @@ The following sets of tools are available:
 | `experiments` | Experimental features that are not considered stable yet |
 | `gists` | GitHub Gist related tools |
 | `git` | GitHub Git API related tools for low-level Git operations |
+| `issue_dependencies` | GitHub Issue Dependencies related tools for managing blocked-by and blocking relationships |
 | `issues` | GitHub Issues related tools |
 | `labels` | GitHub Labels related tools |
 | `notifications` | GitHub Notifications related tools |
@@ -700,6 +701,42 @@ The following sets of tools are available:
   - `recursive`: Setting this parameter to true returns the objects or subtrees referenced by the tree. Default is false (boolean, optional)
   - `repo`: Repository name (string, required)
   - `tree_sha`: The SHA1 value or ref (branch or tag) name of the tree. Defaults to the repository's default branch (string, optional)
+
+</details>
+
+<details>
+
+<summary>Issue Dependencies</summary>
+
+- **issue_dependencies.add_blocked_by** - Add blocking dependency
+  - `blocked_by_issue_number`: The number of the issue that is blocking (number, required)
+  - `blocked_by_owner`: Repository owner of the blocking issue (defaults to same owner) (string, optional)
+  - `blocked_by_repo`: Repository name of the blocking issue (defaults to same repo) (string, optional)
+  - `issue_number`: The number of the issue that is blocked (number, required)
+  - `owner`: Repository owner (username or organization) (string, required)
+  - `repo`: Repository name (string, required)
+
+- **issue_dependencies.list_blocked_by** - List blocking issues
+  - `issue_number`: The number of the issue (number, required)
+  - `owner`: Repository owner (username or organization) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
+- **issue_dependencies.list_blocking** - List blocked issues
+  - `issue_number`: The number of the issue (number, required)
+  - `owner`: Repository owner (username or organization) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
+- **issue_dependencies.remove_blocked_by** - Remove blocking dependency
+  - `blocked_by_issue_number`: The number of the issue that is blocking (number, required)
+  - `blocked_by_owner`: Repository owner of the blocking issue (defaults to same owner) (string, optional)
+  - `blocked_by_repo`: Repository name of the blocking issue (defaults to same repo) (string, optional)
+  - `issue_number`: The number of the issue that is blocked (number, required)
+  - `owner`: Repository owner (username or organization) (string, required)
+  - `repo`: Repository name (string, required)
 
 </details>
 
