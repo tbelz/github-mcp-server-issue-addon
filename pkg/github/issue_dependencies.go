@@ -344,9 +344,14 @@ func RemoveBlockedBy(getClient GetClientFn, t translations.TranslationHelperFunc
 func listIssueDependencies(ctx context.Context, client *github.Client, owner, repo string, issueNumber int, dependencyType string, pagination PaginationParams) (*mcp.CallToolResult, error) {
 	url := fmt.Sprintf("repos/%s/%s/issues/%d/dependencies/%s", owner, repo, issueNumber, dependencyType)
 
-	// Add pagination parameters
-	if pagination.Page > 0 || pagination.PerPage > 0 {
+	// Add pagination parameters if provided
+	switch {
+	case pagination.Page > 0 && pagination.PerPage > 0:
 		url = fmt.Sprintf("%s?page=%d&per_page=%d", url, pagination.Page, pagination.PerPage)
+	case pagination.Page > 0:
+		url = fmt.Sprintf("%s?page=%d", url, pagination.Page)
+	case pagination.PerPage > 0:
+		url = fmt.Sprintf("%s?per_page=%d", url, pagination.PerPage)
 	}
 
 	req, err := client.NewRequest("GET", url, nil)
@@ -412,7 +417,7 @@ func addIssueDependency(ctx context.Context, client *github.Client, owner, repo 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// Accept both 200 OK (when dependency already exists) and 201 Created (when newly created)
+	// Accept both 200 OK (when dependency relationship was already established) and 201 Created (when newly created)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -460,7 +465,7 @@ func removeIssueDependency(ctx context.Context, client *github.Client, owner, re
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// Accept both 200 OK (when response has content) and 204 No Content (when no response body)
+	// Accept both 200 OK (with response content) and 204 No Content (standard DELETE success)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
