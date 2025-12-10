@@ -1,0 +1,42 @@
+{
+  "annotations": {
+    "title": "Remove blocking dependency"
+  },
+  "description": "Remove a blocked-by dependency from an issue.",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "owner",
+      "repo",
+      "issue_number",
+      "blocked_by_issue_number"
+    ],
+    "properties": {
+      "blocked_by_issue_number": {
+        "type": "number",
+        "description": "The number of the issue that is blocking"
+      },
+      "blocked_by_owner": {
+        "type": "string",
+        "description": "Repository owner of the blocking issue (defaults to same owner)"
+      },
+      "blocked_by_repo": {
+        "type": "string",
+        "description": "Repository name of the blocking issue (defaults to same repo)"
+      },
+      "issue_number": {
+        "type": "number",
+        "description": "The number of the issue that is blocked"
+      },
+      "owner": {
+        "type": "string",
+        "description": "Repository owner (username or organization)"
+      },
+      "repo": {
+        "type": "string",
+        "description": "Repository name"
+      }
+    }
+  },
+  "name": "issue_dependencies.remove_blocked_by"
+}

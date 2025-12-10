@@ -112,6 +112,10 @@ var (
 		ID:          "labels",
 		Description: "GitHub Labels related tools",
 	}
+	ToolsetMetadataIssueDependencies = ToolsetMetadata{
+		ID:          "issue_dependencies",
+		Description: "GitHub Issue Dependencies related tools for managing blocked-by and blocking relationships",
+	}
 )
 
 func AvailableTools() []ToolsetMetadata {
@@ -135,6 +139,7 @@ func AvailableTools() []ToolsetMetadata {
 		ToolsetMetadataStargazers,
 		ToolsetMetadataDynamic,
 		ToolsetLabels,
+		ToolsetMetadataIssueDependencies,
 	}
 }
 
@@ -357,6 +362,16 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 			toolsets.NewServerTool(LabelWrite(getGQLClient, t)),
 		)
 
+	issueDependencies := toolsets.NewToolset(ToolsetMetadataIssueDependencies.ID, ToolsetMetadataIssueDependencies.Description).
+		AddReadTools(
+			toolsets.NewServerTool(ListBlockedBy(getClient, t)),
+			toolsets.NewServerTool(ListBlocking(getClient, t)),
+		).
+		AddWriteTools(
+			toolsets.NewServerTool(AddBlockedBy(getClient, t)),
+			toolsets.NewServerTool(RemoveBlockedBy(getClient, t)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(contextTools)
 	tsg.AddToolset(repos)
@@ -377,6 +392,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 	tsg.AddToolset(projects)
 	tsg.AddToolset(stargazers)
 	tsg.AddToolset(labels)
+	tsg.AddToolset(issueDependencies)
 
 	return tsg
 }
