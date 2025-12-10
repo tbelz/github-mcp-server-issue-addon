@@ -29,8 +29,8 @@ type IssueDependenciesResponse struct {
 	Dependencies []IssueDependency `json:"dependencies"`
 }
 
-// AddDependencyRequest represents the request body for adding a dependency
-type AddDependencyRequest struct {
+// DependencyRequest represents the request body for adding or removing a dependency
+type DependencyRequest struct {
 	Owner       string `json:"owner"`
 	Repo        string `json:"repo"`
 	IssueNumber int    `json:"issue_number"`
@@ -385,7 +385,7 @@ func listIssueDependencies(ctx context.Context, client *github.Client, owner, re
 func addIssueDependency(ctx context.Context, client *github.Client, owner, repo string, issueNumber int, blockedByOwner, blockedByRepo string, blockedByIssueNumber int) (*mcp.CallToolResult, error) {
 	url := fmt.Sprintf("repos/%s/%s/issues/%d/dependencies/blocked_by", owner, repo, issueNumber)
 
-	reqBody := AddDependencyRequest{
+	reqBody := DependencyRequest{
 		Owner:       blockedByOwner,
 		Repo:        blockedByRepo,
 		IssueNumber: blockedByIssueNumber,
@@ -412,6 +412,7 @@ func addIssueDependency(ctx context.Context, client *github.Client, owner, repo 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// Accept both 200 OK (when dependency already exists) and 201 Created (when newly created)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -432,7 +433,7 @@ func addIssueDependency(ctx context.Context, client *github.Client, owner, repo 
 func removeIssueDependency(ctx context.Context, client *github.Client, owner, repo string, issueNumber int, blockedByOwner, blockedByRepo string, blockedByIssueNumber int) (*mcp.CallToolResult, error) {
 	url := fmt.Sprintf("repos/%s/%s/issues/%d/dependencies/blocked_by", owner, repo, issueNumber)
 
-	reqBody := AddDependencyRequest{
+	reqBody := DependencyRequest{
 		Owner:       blockedByOwner,
 		Repo:        blockedByRepo,
 		IssueNumber: blockedByIssueNumber,
@@ -459,6 +460,7 @@ func removeIssueDependency(ctx context.Context, client *github.Client, owner, re
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// Accept both 200 OK (when response has content) and 204 No Content (when no response body)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
