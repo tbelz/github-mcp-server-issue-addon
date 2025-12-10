@@ -160,6 +160,123 @@ func Test_ListBlocking(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "repo")
 	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "issue_number")
 	assert.ElementsMatch(t, tool.InputSchema.(*jsonschema.Schema).Required, []string{"owner", "repo", "issue_number"})
+
+	tests := []struct {
+		name               string
+		mockedClient       *http.Client
+		requestArgs        map[string]interface{}
+		expectHandlerError bool
+		expectResultError  bool
+		expectedErrMsg     string
+	}{
+		{
+			name: "successful dependencies retrieval",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocking",
+						Method:  "GET",
+					},
+					mockResponse(t, http.StatusOK, `{
+						"dependencies": [
+							{
+								"number": 50,
+								"title": "Blocked Issue",
+								"state": "open",
+								"html_url": "https://github.com/owner/repo/issues/50"
+							}
+						]
+					}`),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": float64(42),
+			},
+		},
+		{
+			name: "missing owner parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocking",
+						Method:  "GET",
+					},
+					nil,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"repo":         "repo",
+				"issue_number": float64(42),
+			},
+			expectResultError: true,
+			expectedErrMsg:    "missing required parameter: owner",
+		},
+		{
+			name: "missing repo parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocking",
+						Method:  "GET",
+					},
+					nil,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":        "owner",
+				"issue_number": float64(42),
+			},
+			expectResultError: true,
+			expectedErrMsg:    "missing required parameter: repo",
+		},
+		{
+			name: "missing issue_number parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocking",
+						Method:  "GET",
+					},
+					nil,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+			},
+			expectResultError: true,
+			expectedErrMsg:    "missing required parameter: issue_number",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := github.NewClient(tt.mockedClient)
+			_, handler := ListBlocking(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			result, _, err := handler(context.Background(), &mcp.CallToolRequest{}, tt.requestArgs)
+
+			if tt.expectHandlerError {
+				require.Error(t, err)
+				if tt.expectedErrMsg != "" {
+					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.expectResultError {
+				require.NotNil(t, result)
+				assert.True(t, result.IsError)
+				if tt.expectedErrMsg != "" {
+					textContent := getErrorResult(t, result)
+					assert.Contains(t, textContent.Text, tt.expectedErrMsg)
+				}
+			}
+		})
+	}
 }
 
 func Test_AddBlockedBy(t *testing.T) {
@@ -193,7 +310,13 @@ func Test_AddBlockedBy(t *testing.T) {
 						Pattern: "/repos/owner/repo/issues/42/dependencies/blocked_by",
 						Method:  "POST",
 					},
-					mockResponse(t, http.StatusOK, `{"success": true}`),
+					expectRequestBody(t, map[string]interface{}{
+						"owner":        "owner",
+						"repo":         "repo",
+						"issue_number": float64(10),
+					}).andThen(
+						mockResponse(t, http.StatusOK, `{"success": true}`),
+					),
 				),
 			),
 			requestArgs: map[string]interface{}{
@@ -266,4 +389,84 @@ func Test_RemoveBlockedBy(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "issue_number")
 	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "blocked_by_issue_number")
 	assert.ElementsMatch(t, tool.InputSchema.(*jsonschema.Schema).Required, []string{"owner", "repo", "issue_number", "blocked_by_issue_number"})
+
+	tests := []struct {
+		name               string
+		mockedClient       *http.Client
+		requestArgs        map[string]interface{}
+		expectHandlerError bool
+		expectResultError  bool
+		expectedErrMsg     string
+	}{
+		{
+			name: "successful dependency removal",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocked_by",
+						Method:  "DELETE",
+					},
+					expectRequestBody(t, map[string]interface{}{
+						"owner":        "owner",
+						"repo":         "repo",
+						"issue_number": float64(10),
+					}).andThen(
+						mockResponse(t, http.StatusNoContent, ``),
+					),
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":                   "owner",
+				"repo":                    "repo",
+				"issue_number":            float64(42),
+				"blocked_by_issue_number": float64(10),
+			},
+		},
+		{
+			name: "missing blocked_by_issue_number parameter",
+			mockedClient: mock.NewMockedHTTPClient(
+				mock.WithRequestMatch(
+					mock.EndpointPattern{
+						Pattern: "/repos/owner/repo/issues/42/dependencies/blocked_by",
+						Method:  "DELETE",
+					},
+					nil,
+				),
+			),
+			requestArgs: map[string]interface{}{
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": float64(42),
+			},
+			expectResultError: true,
+			expectedErrMsg:    "missing required parameter: blocked_by_issue_number",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := github.NewClient(tt.mockedClient)
+			_, handler := RemoveBlockedBy(stubGetClientFn(client), translations.NullTranslationHelper)
+
+			result, _, err := handler(context.Background(), &mcp.CallToolRequest{}, tt.requestArgs)
+
+			if tt.expectHandlerError {
+				require.Error(t, err)
+				if tt.expectedErrMsg != "" {
+					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.expectResultError {
+				require.NotNil(t, result)
+				assert.True(t, result.IsError)
+				if tt.expectedErrMsg != "" {
+					textContent := getErrorResult(t, result)
+					assert.Contains(t, textContent.Text, tt.expectedErrMsg)
+				}
+			}
+		})
+	}
 }
